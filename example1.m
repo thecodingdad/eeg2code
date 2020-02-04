@@ -14,7 +14,7 @@ screenNumber = max(screens);
 % define some experimental settings (see section 3.2)
 settings = struct();
 settings.monitorResolution = [1920,1080];
-settings.monitorRefreshRate = 10;
+settings.monitorRefreshRate = 60;
 settings.stimulation = 'random';
 settings.layout = 'keyboard';
 settings.windowSize = 'fullscreen';
@@ -22,6 +22,11 @@ settings.startWait = 0;
 settings.trialTime = 10;
 settings.interTrialTime = 0.3;
 settings.trials = 1;
+
+bit_size = 20;
+sequence_number = 100;
+max_correlation_coef = 0.6;
+seq_generator(sequence_number, bit_size, max_correlation_coef);
 
 % initialize experiment object without TCP/IP server and debug enabled
 experiment = vep_experiment(screenNumber,'tcpip',false,'settings',settings,'debug',false);
