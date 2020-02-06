@@ -287,6 +287,12 @@ classdef vep_experiment < handle
             this.stimulation.endTrial();
         end
         
+        function updateWeights(this,bitAcc)
+        %updateWeights  - update weights in stimulation using
+        %updateWeights() function
+            this.stimulation.updateWeights(bitAcc);
+        end        
+        
         function setInfoText(this,text,duration)
         %SETINFOTEXT - shows a info text on the screen
         %   SETINFOTEXT(text,duration) - shows TEXT for DURATION seconds

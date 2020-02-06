@@ -1,13 +1,12 @@
 function seq_generator(sequence_number, bit_size, max_correlation_coef)
-    
-    if ~bit_size, bit_number = 20; end
-    if ~sequence_number, sequence_number = 20; end
-    if ~max_correlation_coef, max_correlation_coef = 0.8; end
+        
+    if ~bit_size, bit_number = 20; end                          %number of bits in one sequence
+    if ~sequence_number, sequence_number = 200; end             %number of sequences generated
+    if ~max_correlation_coef, max_correlation_coef = 0.8; end   %maximum correlation coefficient between seqs
     
     
     randomBinaryNumbers = transpose(randi([0, 1], sequence_number, bit_size));
-    R = corrcoef(randomBinaryNumbers);
-    
+    R = corrcoef(randomBinaryNumbers);    
     [row, column, ]  = find(triu(R,1) > max_correlation_coef);
     
     while ~isempty(row)
@@ -18,7 +17,8 @@ function seq_generator(sequence_number, bit_size, max_correlation_coef)
         R = corrcoef(randomBinaryNumbers);
         [row, column, ]  = find(triu(R,1) > max_correlation_coef);
     end       
-    randomBinaryNumbers = transpose(randomBinaryNumbers);    
-    csvwrite('random_seq_pool.csv', randomBinaryNumbers);
+    randomBinaryNumbers = transpose(randomBinaryNumbers);
     
+    csvwrite('random_seq_pool.csv', randomBinaryNumbers);
+    csvwrite('random_seq_weights.csv', cat(1,ones(1,sequence_number)./sequence_number,zeros(1,sequence_number)));  
 end

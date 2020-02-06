@@ -162,6 +162,12 @@ classdef vep_operator < handle
             this.send('console',text);
         end
         
+        function updateWeights(this, bitAcc)
+        %UPDATEWEIGHTS - send bit prediction accuracy to vep_experiment and
+        %update weights
+            this.send('updateWeights', bitAcc);
+        end
+        
         function info(this,text,varargin)
         %INFO - shows a info text on the screen
         %   INFO(text) - show TEXT for 10 seconds
