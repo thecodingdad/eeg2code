@@ -162,10 +162,10 @@ classdef vep_operator < handle
             this.send('console',text);
         end
         
-        function updateWeights(this, bitAcc)
+        function updateWeights(this, bitAcc, realTarget)
         %UPDATEWEIGHTS - send bit prediction accuracy to vep_experiment and
         %update weights
-            this.send('updateWeights', bitAcc);
+            this.send('updateWeights', bitAcc, realTarget);
         end
         
         function info(this,text,varargin)

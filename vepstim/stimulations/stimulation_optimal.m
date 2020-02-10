@@ -6,6 +6,8 @@ classdef stimulation_optimal < stimulation
         sequences;  %sequence pool
         weights;    %sequence weigths and occurances
         targetseq;  %sequences assigned to targets
+        subset;     %sub sequences that points to sequences
+        bit_acc_tar %bit accuracy and target
     end
     
     methods
@@ -34,30 +36,54 @@ classdef stimulation_optimal < stimulation
                 % get random subset if pool has more sequences as targets
 %                 tmp_weights = this.weights(:,1)./size(this.weights,1);
                 tmp_weights = this.weights(:,1);
-                subset = zeros(1, this.numTargets);
+                this.subset = zeros(1, this.numTargets);
 %                 subset = randsample( size(this.sequences,2), this.numTargets, false, this.weights(1,:)./size(this.weights,2));
                 for i = 1:this.numTargets
                     subnet_new_idx = randsample(this.randstream, size(this.sequences,2), 1, true, tmp_weights);
                     tmp_weights(subnet_new_idx) = 0;
-                    subset(i) = subnet_new_idx;
+                    this.subset(i) = subnet_new_idx;
                 end
                 
             elseif size(this.sequences,2) == this.numTargets
                 % if number of sequences equals number of targets
-                subset = 1:this.numTargets;
+                this.subset = 1:this.numTargets;
             else
                 error('setTargetSequences: too few sequences in sequence pool');
             end
-            this.weights(subset,2) = this.weights(subset, 2) + 1;
-            this.targetseq = this.sequences(:,subset);
+            this.weights(this.subset,2) = this.weights(this.subset, 2) + 1;
+            this.targetseq = this.sequences(:,this.subset);                        
         end
         
-        function updateWeights(this, bitAcc)
+        function updateWeights(this, bitAcc, realTarget)
         %UPDATEWEIGHTS - update weights using newest bit prediction
         %accuracy
-            this.weights(:, 1) = this.weights(:, 1) .* bitAcc;
+            step_size = 1;
+            
+            max_bitAcc = 1;
+            min_bitAcc = 0;            
+            
+            max_weights = max(this.weights(:, 1));
+            min_weights = min(this.weights(:, 1));
+            
+            rescaled_bitAcc = (bitAcc - min_bitAcc)/(max_bitAcc - min_bitAcc) ...
+                * (max_weights - min_weights) + min_weights
+
+            idx = this.subset(realTarget);
+            this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;
+            
+            this.weights = softmax(this.weights);         
+            
+            if size(this.bit_acc_tar) == 0
+                this.bit_acc_tar = [];
+                this.bit_acc_tar = cat(1, this.bit_acc_tar, [bitAcc idx this.weights(idx, 1)]);
+            else
+                this.bit_acc_tar = cat(1, this.bit_acc_tar, [bitAcc idx this.weights(idx, 1)]);
+            end
         end
-        
+        function save()            
+            csvwrite('bit_acc_weigt.csv', this.bit_acc_tar);
+            csvwrite('new_weights.csv', this.weights);
+        end
         function bits = next(this,lostBits)
         %NEXT - returns the next bits of the sequence pool for each target
             %call super method

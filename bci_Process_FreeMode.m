@@ -65,7 +65,7 @@ function bci_Process_FreeMode()
             if bitAcc > 0
                 bitACCs = [bitACCs,bitAcc];
                 
-                vepstim.updateWeights(bitAcc);
+                vepstim.updateWeights(bitAcc, realTarget);
             end
             % clear remote buffer
             if strcmp(settings.modelType,'remote')

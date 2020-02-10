@@ -227,6 +227,8 @@ classdef vep_experiment < handle
         function stop(this)
         %STOP - interrupt the experiment if running
             this.interrupt = true;
+            
+            this.stimulation.save();
         end
         
         function send(this,fun,varargin)
@@ -287,10 +289,10 @@ classdef vep_experiment < handle
             this.stimulation.endTrial();
         end
         
-        function updateWeights(this,bitAcc)
+        function updateWeights(this,bitAcc, realTarget)
         %updateWeights  - update weights in stimulation using
         %updateWeights() function
-            this.stimulation.updateWeights(bitAcc);
+            this.stimulation.updateWeights(bitAcc, realTarget);
         end        
         
         function setInfoText(this,text,duration)
