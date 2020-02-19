@@ -23,6 +23,8 @@ settings.trialTime = 10;
 settings.interTrialTime = 0.3;
 settings.trials = 1;
 
+settings.weight_step_size = 0.5;
+
 bit_size = 20;
 sequence_number = 100;
 max_correlation_coef = 0.6;

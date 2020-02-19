@@ -72,6 +72,11 @@ classdef stimulation < handle
             this.isTrial = false;
         end
         
+        function save(this)
+        %SAVE - save variables in stimulation
+            
+        end
+        
         function res = isSequenceStart(this)
         %ISSEQUENCESTART - flag that defines the start of a sequence, is set as bit to parallel port
             res = false;

@@ -51,27 +51,42 @@ classdef stimulation_optimal < stimulation
                 error('setTargetSequences: too few sequences in sequence pool');
             end
             this.weights(this.subset,2) = this.weights(this.subset, 2) + 1;
-            this.targetseq = this.sequences(:,this.subset);                        
+            this.targetseq = this.sequences(:,this.subset);
         end
         
         function updateWeights(this, bitAcc, realTarget)
         %UPDATEWEIGHTS - update weights using newest bit prediction
         %accuracy
-            step_size = 1;
+%             step_size = 1;
+%             
+%             max_bitAcc = 1;
+%             min_bitAcc = 0;            
+%             
+%             max_weights = max(this.weights(:, 1));
+%             min_weights = min(this.weights(:, 1));
             
-            max_bitAcc = 1;
-            min_bitAcc = 0;            
+%             % approach 1
+%             rescaled_bitAcc = (bitAcc - min_bitAcc)/(max_bitAcc - min_bitAcc) ...
+%                 * (max_weights - min_weights) + min_weights;
+% 
+%             idx = this.subset(realTarget);
+%             this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;
+
             
-            max_weights = max(this.weights(:, 1));
-            min_weights = min(this.weights(:, 1));
+            % approach 2
             
-            rescaled_bitAcc = (bitAcc - min_bitAcc)/(max_bitAcc - min_bitAcc) ...
-                * (max_weights - min_weights) + min_weights
+            step_size = 1;       
+            
+
+            max_weights = 1/size(this.weights(:, 1), 1);
+            min_weights = 0;
+            
+            rescaled_bitAcc = bitAcc * (max_weights - min_weights) + min_weights;
 
             idx = this.subset(realTarget);
-            this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;
+            this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;           
             
-            this.weights = softmax(this.weights);         
+%             this.weights = softmax(this.weights);
             
             if size(this.bit_acc_tar) == 0
                 this.bit_acc_tar = [];
@@ -80,16 +95,21 @@ classdef stimulation_optimal < stimulation
                 this.bit_acc_tar = cat(1, this.bit_acc_tar, [bitAcc idx this.weights(idx, 1)]);
             end
         end
-        function save()            
-            csvwrite('bit_acc_weigt.csv', this.bit_acc_tar);
-            csvwrite('new_weights.csv', this.weights);
+        function save(this)
+            run = string(10);
+            csvwrite(strcat('./weight_update_data/approach_2/r_',run,'_tr_',run,'00_bit_acc_weigt.csv'), this.bit_acc_tar);
+            csvwrite(strcat('./weight_update_data/approach_2/r_',run,'_tr_',run,'00_new_weights.csv'), transpose(this.weights));
         end
         function bits = next(this,lostBits)
         %NEXT - returns the next bits of the sequence pool for each target
             %call super method
             next@stimulation(this,lostBits);
-            if mod(this.stimPos-1,size(this.sequences,1))+1 == 1, this.setTargetSequences(); end
             bits = this.targetseq(mod(this.stimPos-1,size(this.sequences,1))+1,:);
+        end
+        function startTrial(this)
+        %ENDTRIAL - defines that a trial has started
+            startTrial@stimulation(this);
+            this.setTargetSequences();
         end
     end
     

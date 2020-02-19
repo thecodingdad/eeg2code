@@ -1,6 +1,6 @@
 function seq_generator(sequence_number, bit_size, max_correlation_coef)
         
-    if ~bit_size, bit_number = 20; end                          %number of bits in one sequence
+    if ~bit_size, bit_number = 60; end                          %number of bits in one sequence
     if ~sequence_number, sequence_number = 200; end             %number of sequences generated
     if ~max_correlation_coef, max_correlation_coef = 0.8; end   %maximum correlation coefficient between seqs
     
