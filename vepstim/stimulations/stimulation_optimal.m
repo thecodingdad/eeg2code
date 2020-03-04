@@ -8,8 +8,11 @@ classdef stimulation_optimal < stimulation
         targetseq;  %sequences assigned to targets
         subset;     %sub sequences that points to sequences
         bit_acc_tar %bit accuracy and target
+        weights_bit_acc;
         max_bitAcc;
         min_bitAcc;
+        mean_bitAcc;
+        trials;
     end
     
     methods
@@ -32,22 +35,27 @@ classdef stimulation_optimal < stimulation
             this.randstream = RandStream('mt19937ar','Seed',p.Results.randomseed);
             this.sequences = csvread(p.Results.sequencePool)';
             this.weights = csvread(p.Results.sequenceWeights)';
-            
+            this.mean_bitAcc = 0;
             this.max_bitAcc = 0;
             this.min_bitAcc = 1;
+            this.trials = varargin{1}.trials;
+            this.weights_bit_acc = cell(size(this.sequences,2), 1);
+            
         end
         
         function setTargetSequences(this)
         %SETTARGETSEQUENCES - assign random sequence of the sequence pool to each target
             if size(this.sequences,2) > this.numTargets
                 % get random subset if pool has more sequences as targets
-%                 tmp_weights = this.weights(:,1)./size(this.weights,1);
+                
                 tmp_weights = this.weights(:,1);
                 this.subset = zeros(1, this.numTargets);
-%                 subset = randsample( size(this.sequences,2), ...
-%                 this.numTargets, false, this.weights(1,:)./size(this.weights,2));
+                
                 for i = 1:this.numTargets
-                    subnet_new_idx = randsample(this.randstream, size(this.sequences,2), 1, true, tmp_weights);
+%                     subnet_new_idx = randsample(this.randstream, size(this.sequences,2), 1, true, tmp_weights);
+                    
+                    subnet_new_idx = randsample(size(this.sequences,2), 1, true, tmp_weights);
+                    
                     tmp_weights(subnet_new_idx) = 0;
                     this.subset(i) = subnet_new_idx;
                 end
@@ -62,39 +70,37 @@ classdef stimulation_optimal < stimulation
             this.targetseq = this.sequences(:,this.subset);
         end
         
-        function updateWeights(this, bitAcc, realTarget, trialNum, currentTrial)
+        function updateWeights(this, bitAcc, realTarget)
         %UPDATEWEIGHTS - update weights using newest bit prediction
-        %accuracy          
+        %accuracy
             
             idx = this.subset(realTarget);
             prev_weight = this.weights(idx, 1);
             
-            this.approach_4_4(bitAcc, realTarget);
-                    
+            this.approach_4_7(bitAcc, realTarget);
             
-            if (this.weights(idx, 1) < 0) || isnan(this.weights(idx, 1))
-                disp(this.weights(idx, 1));
-                disp('tuuchii');    
-            end
-            % approach 4
-            % add rejection probability to each weights
-            % 
             if size(this.bit_acc_tar) == 0
                 this.bit_acc_tar = [];
                 this.bit_acc_tar = cat(1, this.bit_acc_tar, [bitAcc idx prev_weight this.weights(idx, 1)]);
             else
                 this.bit_acc_tar = cat(1, this.bit_acc_tar, [bitAcc idx prev_weight this.weights(idx, 1)]);
             end
+            this.mean_bitAcc = mean(this.bit_acc_tar(:,1));                        
         end
-        function save(this, run, trialNum, dir)
+        function save(this, run, dir)
 %             run = string(1);    
             if ~exist(dir, 'dir')
                mkdir(dir)
             end
-            csvwrite(strcat(dir,'/r_',run,'_tr_',string(trialNum),...
+            csvwrite(strcat(dir,'/r_',run,'_tr_',string(this.trials),...
                 '_bit_acc_weight.csv'), this.bit_acc_tar);
-            csvwrite(strcat(dir,'/r_',run,'_tr_',string(trialNum),...
+            csvwrite(strcat(dir,'/r_',run,'_tr_',string(this.trials),...
                 '_new_weights.csv'), transpose(this.weights));
+            this.weights_bit_acc;
+            
+%             T = cell2table(this.weights_bit_acc);
+%             writetable(T,strcat(dir,'/r_',run,'_tr_',string(this.trials),...
+%                 '_weights_bit_acc.csv'));
         end
         function bits = next(this,lostBits)
         %NEXT - returns the next bits of the sequence pool for each target
@@ -230,10 +236,11 @@ classdef stimulation_optimal < stimulation
             % But the graph shows too much flickering            
             idx = this.subset(realTarget);
             
-            currentTrial = sum(this.weights(idx, 2));
+            currentTrial = sum(this.weights(:, 2));
+            
             trialNum = 1000;
             step_size = 1;           
-            log_scale = 1-1/log10(trialNum)*log10(currentTrial);
+            log_scale = 1-1/log10(trialNum)*log10(1000-currentTrial+1);
             
             if bitAcc > this.max_bitAcc
                 this.max_bitAcc = bitAcc;
@@ -253,14 +260,15 @@ classdef stimulation_optimal < stimulation
             this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size; 
         end
         function approach_4_5(this, bitAcc, realTarget)
-            % decrease step_size
+            % algebric scale with rejection of mean 
             % 
             idx = this.subset(realTarget);
             
-            currentTrial = sum(this.weights(idx, 2));
-            trialNum = 1000;
-            step_size = 0.3;           
-            log_scale = 1-1/log10(trialNum)*log10(currentTrial);
+            currentTrial = sum(this.weights(:, 2));
+            step_size = 0.5;           
+            algebric_scale = currentTrial;
+            algebric_scale = (algebric_scale - 1)./(1.5 * this.trials - 1).*(0 + 6) - 6;
+            algebric_scale = 1 + algebric_scale / sqrt((1+algebric_scale^2));
             
             if bitAcc > this.max_bitAcc
                 this.max_bitAcc = bitAcc;
@@ -273,13 +281,100 @@ classdef stimulation_optimal < stimulation
             
             if bitAcc ~= this.min_bitAcc
                 rescaled_bitAcc = (bitAcc - this.min_bitAcc)/...
-                    (this.max_bitAcc-this.min_bitAcc) * rescaling_value * log_scale;
+                    (this.max_bitAcc-this.min_bitAcc) * rescaling_value * algebric_scale;
             else
-                rescaled_bitAcc = bitAcc * rescaling_value * log_scale;
+                rescaled_bitAcc = bitAcc * rescaling_value * algebric_scale;
             end
-            this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size; 
+            if bitAcc > this.mean_bitAcc
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc;
+            else
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;                
+            end
+            
+            if (this.weights(idx, 1) < 0) || isnan(this.weights(idx, 1))            
+                disp('tuuchii');    
+            end
         end
-        
+        function approach_4_6(this, bitAcc, realTarget)
+            % chain bit accuracy weight update
+            % with median threshold
+            idx = this.subset(realTarget);
+            this.weights_bit_acc{idx} = [this.weights_bit_acc{idx} bitAcc];
+            
+            currentTrial = sum(this.weights(:, 2));
+            step_size = 0;
+            algebric_scale = currentTrial;
+            algebric_scale = (algebric_scale - 1)./(1.5 * this.trials - 1).*(0 + 6) - 6;
+            algebric_scale = 1 + algebric_scale / sqrt((1+algebric_scale^2));
+            
+            if bitAcc > this.max_bitAcc
+                this.max_bitAcc = bitAcc;
+            end
+            if bitAcc < this.min_bitAcc
+                this.min_bitAcc = bitAcc;
+            end
+                        
+            rescaling_value = 1/size(this.weights(:, 1), 1);
+                        
+            if bitAcc ~= this.min_bitAcc
+                rescaled_bitAcc = (bitAcc - this.min_bitAcc)/...
+                    (this.max_bitAcc-this.min_bitAcc) * rescaling_value * algebric_scale;
+            else
+                rescaled_bitAcc = bitAcc * rescaling_value * algebric_scale;
+            end
+            
+            bit_acc_median = median(this.weights_bit_acc{idx});
+            
+            if bit_acc_median > this.mean_bitAcc
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc;
+            else
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;                
+            end
+            
+            if (this.weights(idx, 1) < 0) || isnan(this.weights(idx, 1))
+                disp('tuuchii');
+            end
+        end
+        function approach_4_7(this, bitAcc, realTarget)
+            % chain bit accuracy weight update
+            % with mean threshodld
+            idx = this.subset(realTarget);
+            this.weights_bit_acc{idx} = [this.weights_bit_acc{idx} bitAcc];
+            
+            currentTrial = sum(this.weights(:, 2));
+            step_size = 0.5;
+            algebric_scale = currentTrial;
+            algebric_scale = (algebric_scale - 1)./(1.5 * this.trials - 1).*(0 + 6) - 6;
+            algebric_scale = 1 + algebric_scale / sqrt((1+algebric_scale^2));
+            
+            if bitAcc > this.max_bitAcc
+                this.max_bitAcc = bitAcc;
+            end
+            if bitAcc < this.min_bitAcc
+                this.min_bitAcc = bitAcc;
+            end
+                        
+            rescaling_value = 1/size(this.weights(:, 1), 1);
+                        
+            if bitAcc ~= this.min_bitAcc
+                rescaled_bitAcc = (bitAcc - this.min_bitAcc)/...
+                    (this.max_bitAcc-this.min_bitAcc) * rescaling_value * algebric_scale;
+            else
+                rescaled_bitAcc = bitAcc * rescaling_value * algebric_scale;
+            end
+            
+            bit_acc_mean = mean(this.weights_bit_acc{idx});
+            
+            if bit_acc_mean > this.mean_bitAcc
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc;
+            else
+                this.weights(idx, 1) = this.weights(idx, 1) + rescaled_bitAcc * step_size;                
+            end
+            
+            if (this.weights(idx, 1) < 0) || isnan(this.weights(idx, 1))
+                disp('tuuchii');
+            end
+        end
     end
     
 end

@@ -228,7 +228,7 @@ classdef vep_experiment < handle
         %STOP - interrupt the experiment if running
             this.interrupt = true;
             
-            this.stimulation.save();
+            this.stimulation.save('1', './weight_update_data/approach_test');
         end
         
         function send(this,fun,varargin)
@@ -379,7 +379,12 @@ classdef vep_experiment < handle
         
         function initStimulation(this)
         %INITSTIMULATION - initialize the stimulation dependent on the number of targets
-            this.stimulation = feval(['stimulation_' this.settings.stimulation],this.layout.numTargets,this.settings.stimSettings);
+            if isequal(this.settings.stimulation, 'optimal')
+                this.settings.stimSettings.trials = length(this.settings.trials);
+                this.stimulation = feval(['stimulation_' this.settings.stimulation],this.layout.numTargets,this.settings.stimSettings);
+            else
+                this.stimulation = feval(['stimulation_' this.settings.stimulation],this.layout.numTargets,this.settings.stimSettings);
+            end
         end
     end
     
